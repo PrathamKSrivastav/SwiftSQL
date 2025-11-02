@@ -1,80 +1,107 @@
+import logging
+from pathlib import Path
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-import logging
-
-from app.api.router import api_router
-from app.core.config import settings
-from app.services.inference import InferenceService
-from app.dependencies import set_inference_service  # Import here
+from pydantic import BaseModel
 
 # Configure logging
-logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL.upper()),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Import utilities (your model inference)
+from app.utils import predict_sql
+
+# Define request/response models
+class QueryRequest(BaseModel):
+    question: str
+
+class QueryResponse(BaseModel):
+    sql: str
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle manager for ML model loading"""
-    
-    # Startup: Load ML models
+    # Startup
     logger.info("🚀 Loading ML models...")
     try:
-        inference_service = InferenceService(settings.MODEL_PATH)
-        inference_service.load_models()
-        set_inference_service(inference_service)  # Set global instance
-        logger.info("✅ ML models loaded successfully")
-        yield
+        # Models are loaded when utils.py is imported
+        logger.info("✅ Seq2Seq Model loaded (Encoder-Decoder)")
+        logger.info("✅ Tokenizers loaded")
     except Exception as e:
         logger.error(f"❌ Failed to load models: {e}")
         raise
-    finally:
-        # Shutdown: Cleanup
-        logger.info("🛑 Shutting down ML service...")
-        set_inference_service(None)
+    
+    yield
+    
+    # Shutdown
+    logger.info("🛑 Shutting down ML service...")
 
 # Create FastAPI app
 app = FastAPI(
     title="SwiftSQL ML Service",
-    description="Natural Language to SQL conversion using LSTM models",
+    description="NLP to SQL Conversion Engine with Seq2Seq",
     version="2.0.0",
     lifespan=lifespan
 )
 
-# CORS - Only in development
-if settings.ENV == "development":
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-# Include API routes
-app.include_router(api_router, prefix="/api/v1")
-
+# ==========================================
+# Health Check Route
+# ==========================================
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    from app.dependencies import _inference_service
-    model_status = "loaded" if _inference_service and _inference_service.models_loaded else "not_loaded"
-    
+    """Check service health"""
     return {
-        "status": "healthy" if model_status == "loaded" else "unhealthy",
-        "service": "ml-service",
+        "status": "healthy",
+        "service": "SwiftSQL ML Service",
         "version": "2.0.0",
-        "model_status": model_status,
-        "environment": settings.ENV
+        "model": "Seq2Seq Encoder-Decoder"
     }
 
+# ==========================================
+# NLP to SQL Conversion Route
+# ==========================================
+@app.post("/api/nlp-to-sql", response_model=QueryResponse)
+async def generate_sql(request: QueryRequest):
+    """Convert natural language to SQL using Seq2Seq model"""
+    try:
+        sql_query = predict_sql(request.question)
+        logger.info(f"✅ Generated SQL: {sql_query}")
+        return QueryResponse(sql=sql_query)
+    except Exception as e:
+        logger.error(f"❌ Error generating SQL: {e}")
+        return QueryResponse(sql=f"ERROR: {str(e)}")
+
+# ==========================================
+# Root Route
+# ==========================================
 @app.get("/")
 async def root():
-    """Root endpoint"""
+    """API info"""
     return {
-        "message": "SwiftSQL ML Service",
+        "name": "SwiftSQL ML Service",
         "version": "2.0.0",
-        "docs": "/docs"
+        "status": "running",
+        "model": "Seq2Seq Encoder-Decoder",
+        "endpoints": {
+            "health": "/health",
+            "generate_sql": "/api/nlp-to-sql"
+        }
     }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+    )

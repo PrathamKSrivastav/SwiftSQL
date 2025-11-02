@@ -1,89 +1,143 @@
 import User from '../models/User.model.js';
-import { generateTokens } from '../services/token.service.js';
-import catchAsync from '../utils/catchAsync.js';
-import ApiError from '../utils/ApiError.js';
-import logger from '../config/logger.js';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
+import logger from '../config/logger.js';
 
-/**
- * Google OAuth callback handler
- * Called after successful Google authentication
- */
-export const googleCallback = catchAsync(async (req, res) => {
-  const { accessToken, refreshToken } = generateTokens(req.user._id);
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-  // Set refresh token in httpOnly cookie (secure)
-  res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+// ==========================================
+// Generate JWT Token
+// ==========================================
+const signToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   });
+};
 
-  logger.info(`User logged in: ${req.user.email}`);
+// ==========================================
+// Google OAuth Callback Handler
+// ==========================================
+export const googleCallback = async (req, res) => {
+  try {
+    const { credential } = req.body;
 
-  // Redirect to frontend with access token
-  const redirectUrl = `${process.env.CORS_ORIGIN}/auth/callback?token=${accessToken}`;
-  res.redirect(redirectUrl);
-});
+    if (!credential) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'No credential provided',
+      });
+    }
 
-/**
- * Get current authenticated user
- */
-export const getMe = catchAsync(async (req, res) => {
-  const user = await User.findById(req.user._id);
+    logger.info('🔐 Verifying Google credential...');
 
-  if (!user) {
-    throw new ApiError(404, 'User not found');
+    // Verify the JWT credential from Google
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name, picture, sub: googleId } = payload;
+
+    logger.info(`✅ Google credential verified for: ${email}`);
+
+    // Find or create user
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      logger.info(`📝 Creating new user: ${email}`);
+      user = await User.create({
+        email,
+        name,
+        picture,
+        googleId,
+        provider: 'google',
+      });
+    } else {
+      logger.info(`✅ User exists: ${email}`);
+      // Update picture if changed
+      if (picture && user.picture !== picture) {
+        user.picture = picture;
+        await user.save();
+      }
+    }
+
+    // Generate JWT token
+    const token = signToken(user._id);
+
+    logger.info(`✅ JWT token generated for user: ${user._id}`);
+
+    res.status(200).json({
+      status: 'success',
+      token,
+      user: {
+        _id: user._id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture,
+      },
+    });
+  } catch (error) {
+    logger.error('❌ Google OAuth error:', error.message);
+    res.status(401).json({
+      status: 'error',
+      message: 'Google authentication failed',
+      error: error.message,
+    });
   }
+};
 
-  res.status(200).json({
-    status: 'success',
-    data: { user },
-  });
-});
+// ==========================================
+// Get Current User
+// ==========================================
+export const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
 
-/**
- * Logout user
- */
-export const logout = catchAsync(async (req, res) => {
-  // Clear refresh token cookie
-  res.cookie('refreshToken', '', {
-    httpOnly: true,
-    expires: new Date(0),
-  });
+    if (!user) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found',
+      });
+    }
 
-  logger.info(`User logged out: ${req.user.email}`);
-
-  res.status(200).json({
-    status: 'success',
-    message: 'Logged out successfully',
-  });
-});
-
-/**
- * Refresh access token using refresh token
- */
-export const refreshToken = catchAsync(async (req, res) => {
-  const { refreshToken } = req.cookies;
-
-  if (!refreshToken) {
-    throw new ApiError(401, 'No refresh token provided');
+    res.status(200).json({
+      status: 'success',
+      user,
+    });
+  } catch (error) {
+    logger.error('❌ Get user error:', error.message);
+    throw error;
   }
+};
 
-  // Verify refresh token
-  const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
-  const user = await User.findById(decoded.id);
+// ==========================================
+// Refresh Token
+// ==========================================
+export const refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
 
-  if (!user || !user.isActive) {
-    throw new ApiError(401, 'Invalid refresh token');
+    if (!refreshToken) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Refresh token required',
+      });
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+
+    const newToken = signToken(decoded.id);
+
+    res.status(200).json({
+      status: 'success',
+      token: newToken,
+    });
+  } catch (error) {
+    logger.error('❌ Token refresh error:', error.message);
+    res.status(401).json({
+      status: 'error',
+      message: 'Token refresh failed',
+    });
   }
-
-  // Generate new access token
-  const { accessToken: newAccessToken } = generateTokens(user._id);
-
-  res.status(200).json({
-    status: 'success',
-    data: { accessToken: newAccessToken },
-  });
-});
+};

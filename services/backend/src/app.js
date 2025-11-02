@@ -1,144 +1,124 @@
 import express from 'express';
+import cors from 'cors';
 import helmet from 'helmet';
-import cookieParser from 'cookie-parser';
 import mongoSanitize from 'express-mongo-sanitize';
-import session from 'express-session';
-import passport from './config/passport.js';
+import cookieParser from 'cookie-parser';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
 import logger from './config/logger.js';
+import AppError from './utils/AppError.js';
 
-// Middleware Imports
-import { corsMiddleware } from './middleware/cors.middleware.js';
-import { requestLogger } from './middleware/logger.middleware.js';
-import { errorHandler, notFound } from './middleware/error.middleware.js';
-import { apiLimiter } from './middleware/rateLimiter.js';
+// Import routes
+import v1Routes from './routes/index.js';
+import authRoutes from './routes/auth.routes.js';
 
-// Routes Imports
-import routes from './routes/index.js';
-
-/**
- * Create Express application
- * Note: Passport is initialized in server.js AFTER env vars are loaded
- */
 const app = express();
+
+// ==========================================
+// Trust proxy
+// ==========================================
+app.set('trust proxy', 1);
 
 // ==========================================
 // Security Middleware
 // ==========================================
+
+// Set security HTTP headers
+app.use(helmet());
+
+// CORS
 app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:', 'https:'],
-      },
-    },
-    crossOriginEmbedderPolicy: false,
+  cors({
+    origin: process.env.CORS_ORIGIN || '*',
+    credentials: true,
   })
 );
 
-app.use(mongoSanitize());
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+});
+app.use('/api/', limiter);
 
-// ==========================================
-// CORS
-// ==========================================
-app.use(corsMiddleware);
+// Body parser middleware
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ limit: '10kb', extended: true }));
 
-// ==========================================
-// Body Parsing
-// ==========================================
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Cookie parser
 app.use(cookieParser());
 
-// ==========================================
-// Session Middleware
-// ==========================================
-app.use(
-  session({
-    secret: process.env.JWT_SECRET || 'dev-secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000,
-    },
-  })
-);
+// Data sanitization against NoSQL injection
+app.use(mongoSanitize());
 
-// ==========================================
-// Passport Middleware (Already initialized in server.js)
-// ==========================================
-app.use(passport.initialize());
-app.use(passport.session());
-
-// ==========================================
-// Request Logging
-// ==========================================
-if (process.env.NODE_ENV !== 'test') {
-  app.use(requestLogger);
-}
-
-// ==========================================
-// Rate Limiting
-// ==========================================
-app.use('/api', apiLimiter);
+// Compression middleware
+app.use(compression());
 
 // ==========================================
 // Routes
 // ==========================================
-app.get('/', (req, res) => {
-  res.status(200).json({
-    name: 'SwiftSQL API',
-    version: '2.0.0',
-    description: 'Natural Language to SQL conversion service',
-    status: 'running',
-    timestamp: new Date().toISOString(),
-  });
-});
 
+// Auth routes (must be before v1Routes)
+app.use('/api/v1/auth', authRoutes);
+
+// All other API v1 routes
+app.use('/api/v1', v1Routes);
+
+// Health check route
 app.get('/health', (req, res) => {
   res.status(200).json({
-    status: 'healthy',
-    uptime: process.uptime(),
+    status: 'success',
+    message: 'Server is healthy',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
   });
 });
 
-app.get('/status', (req, res) => {
+// Root route
+app.get('/', (req, res) => {
   res.status(200).json({
-    status: 'ok',
-    services: {
-      api: 'running',
-      database: 'connected',
-      mlService: 'connected',
+    message: 'Welcome to SwiftSQL API',
+    version: '2.0.0',
+    endpoints: {
+      docs: '/api/docs',
+      health: '/health',
+      api: '/api/v1',
     },
-    timestamp: new Date().toISOString(),
   });
 });
 
-app.use('/api/v1', routes);
-
 // ==========================================
-// Error Handling
+// 404 Error Handler
 // ==========================================
-app.use(notFound);
-app.use(errorHandler);
-
-// ==========================================
-// Graceful Shutdown
-// ==========================================
-process.on('unhandledRejection', (reason) => {
-  logger.error('UNHANDLED REJECTION! 💥');
-  logger.error(reason);
+app.all('*', (req, res, next) => {
+  logger.error(`Route ${req.originalUrl} not found`);
+  const err = new AppError(`Can't find ${req.originalUrl} on this server!`, 404);
+  next(err);
 });
 
-process.on('uncaughtException', (error) => {
-  logger.error('UNCAUGHT EXCEPTION! 💥');
-  logger.error(error);
+// ==========================================
+// Global Error Handling Middleware
+// ==========================================
+app.use((err, req, res, next) => {
+  err.statusCode = err.statusCode || 500;
+  err.status = err.status || 'error';
+
+  logger.error(`${err.statusCode}: ${err.message}`);
+
+  if (process.env.NODE_ENV === 'development') {
+    res.status(err.statusCode).json({
+      status: err.status,
+      error: err,
+      message: err.message,
+      stack: err.stack,
+    });
+  } else {
+    // Production: don't leak error details
+    res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message,
+    });
+  }
 });
 
 export default app;
