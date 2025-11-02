@@ -1,0 +1,45 @@
+name: Deploy ML Service to Render
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/ml-service/**'
+      - '.github/workflows/ml-service-deploy.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ml-service
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest
+      
+      - name: Run tests
+        run: pytest
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Deploy to Render
+        uses: johnbeynon/render-deploy-action@v0.0.8
+        with:
+          service-id: ${{ secrets.RENDER_ML_SERVICE_ID }}
+          api-key: ${{ secrets.RENDER_API_KEY }}

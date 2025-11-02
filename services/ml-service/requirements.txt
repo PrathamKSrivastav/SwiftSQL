@@ -1,0 +1,12 @@
+# FastAPI
+fastapi==0.115.4
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+pydantic-settings==2.6.0
+
+# TensorFlow (Updated to 2.16 - compatible with FastAPI)
+tensorflow==2.16.2
+numpy==1.26.4
+
+# Additional dependencies
+python-multipart==0.0.12

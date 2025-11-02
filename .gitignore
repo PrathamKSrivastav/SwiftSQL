@@ -1,0 +1,213 @@
+# ==========================================
+# Environment Variables
+# ==========================================
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+
+# ==========================================
+# Dependencies
+# ==========================================
+node_modules/
+npm-debug.log*
+npm-debug.log*.json
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+venv/
+ENV/
+env/
+.venv
+
+# ==========================================
+# Build & Distribution
+# ==========================================
+/dist
+/build
+*.egg-info
+
+# React/Frontend
+/services/frontend/build
+/services/frontend/dist
+
+# ==========================================
+# IDE & Editor Files
+# ==========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-settings
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# WebStorm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# ==========================================
+# Operating System Files
+# ==========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ==========================================
+# Logs
+# ==========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# ==========================================
+# Testing
+# ==========================================
+coverage/
+.nyc_output/
+*.coverage
+htmlcov/
+.pytest_cache/
+
+# ==========================================
+# Database & Cache
+# ==========================================
+*.db
+*.sqlite
+*.sqlite3
+*.mongorc.js
+.mongod_pid
+.mongos_pid
+
+# ==========================================
+# Temporary Files
+# ==========================================
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# ==========================================
+# OS & Lock Files
+# ==========================================
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+poetry.lock
+Pipfile.lock
+
+# ==========================================
+# Production Build Files
+# ==========================================
+*.tsbuildinfo
+.next/
+out/
+.vercel/
+
+# ==========================================
+# Docker
+# ==========================================
+.dockerignore
+.dockerignore.local
+
+# ==========================================
+# Certificates & Keys
+# ==========================================
+*.pem
+*.key
+*.cert
+*.crt
+*.p8
+.ssh/
+
+# ==========================================
+# API Keys & Secrets (Security)
+# ==========================================
+.env*.local
+secrets/
+private/
+credentials.json
+token.json
+tokens.json
+
+# ==========================================
+# Mobile App (if added later)
+# ==========================================
+*.apk
+*.ipa
+*.jks
+
+# ==========================================
+# IDE Temporary Files
+# ==========================================
+*.tern-port
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ==========================================
+# Misc
+# ==========================================
+.cache/
+.turbo/
+.eslintcache
+.node_repl_history
+*.tgz
+.yarn/install-state.gz
+.pnp.*
+dist-ssr/

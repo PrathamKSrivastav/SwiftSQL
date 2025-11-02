@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Environment
+.env
+.env.local
+
+# Logs
+logs/
+*.log
+
+# Testing
+.pytest_cache/
+coverage/
+.coverage
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Models & Data (Optional - uncomment if needed)
+# *.pkl
+# *.model
+# *.h5
+# data/

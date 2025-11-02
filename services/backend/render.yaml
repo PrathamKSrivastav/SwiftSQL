@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: swiftsql-backend
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: ML_SERVICE_URL
+        value: http://swiftsql-ml-service:8000
+      - key: CORS_ORIGIN
+        value: https://swiftsql.vercel.app
+    healthCheckPath: /health
