@@ -41,7 +41,7 @@ export default function EditorPage() {
     }
   }, [selectedConnection]);
 
-  const handleExecute = async () => {
+const handleExecute = async () => {
   if (!selectedConnection) {
     alert('Please select a database connection first');
     navigate('/databases');
@@ -51,20 +51,37 @@ export default function EditorPage() {
   try {
     const result = await executeQuery(sqlQuery, selectedConnection._id || selectedConnection.id);
     
-    // Safe extraction with fallbacks
     setExecutionStats({
       rowCount: result?.rowCount ?? result?.results?.length ?? 0,
       executionTime: result?.executionTime ?? 0,
       timestamp: new Date(),
     });
 
-    // 👇 ADD THIS: Refresh history after successful execution
     fetchHistory().catch((err) => console.error('Failed to refresh history:', err));
+
+    // Auto-detect USE statement and refresh tables
+    const useMatch = sqlQuery.trim().match(/^USE\s+`?(\w+)`?;?$/i);
+    if (useMatch) {
+      const newDatabase = useMatch[1];
+      console.log(`🔄 Database switched to: ${newDatabase}`);
+      
+      // Show a toast/notification (optional)
+      // toast.success(`Switched to database: ${newDatabase}`);
+      
+      // Refresh tables after a short delay
+      setTimeout(() => {
+        fetchTables(selectedConnection._id || selectedConnection.id)
+          .then(() => console.log(`✅ Tables refreshed for: ${newDatabase}`))
+          .catch((err) => console.error('Failed to refresh tables:', err));
+      }, 500);
+    }
   } catch (err) {
     console.error('Query execution failed:', err);
     setExecutionStats(null);
   }
 };
+
+
 
 
   const handleConvertNLP = async () => {

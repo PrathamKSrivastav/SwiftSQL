@@ -4,7 +4,6 @@ import { Download, AlertCircle, ChevronLeft, ChevronRight, Copy, Eye, EyeOff } f
 export default function ResultsDisplay({ results, isLoading, error }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [expandedRow, setExpandedRow] = useState(null);
   const [showJSON, setShowJSON] = useState(false);
   const [copiedCell, setCopiedCell] = useState(null);
 
@@ -69,7 +68,7 @@ export default function ResultsDisplay({ results, isLoading, error }) {
       ...safeResults.map((row) =>
         columns.map((col) => {
           const value = row[col];
-          const escaped = String(value).replace(/"/g, '""');
+          const escaped = String(value ?? '').replace(/"/g, '""');
           return `"${escaped}"`;
         }).join(',')
       ),
@@ -88,7 +87,7 @@ export default function ResultsDisplay({ results, isLoading, error }) {
 
   const formatCellValue = (value) => {
     if (value === null || value === undefined) {
-      return <span className="text-gray-400 italic">NULL</span>;
+      return <span className="text-gray-400 italic text-xs">NULL</span>;
     }
 
     if (typeof value === 'object') {
@@ -104,13 +103,13 @@ export default function ResultsDisplay({ results, isLoading, error }) {
 
     if (typeof value === 'boolean') {
       return (
-        <span className={`font-semibold ${value ? 'text-green-600' : 'text-red-600'}`}>
+        <span className={`font-semibold text-xs ${value ? 'text-green-600' : 'text-red-600'}`}>
           {value ? 'TRUE' : 'FALSE'}
         </span>
       );
     }
 
-    return String(value);
+    return <span className="text-gray-800">{String(value)}</span>;
   };
 
   return (
@@ -133,7 +132,7 @@ export default function ResultsDisplay({ results, isLoading, error }) {
             onClick={() => setShowJSON(!showJSON)}
             className="flex items-center space-x-1 px-3 py-2 text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 transition text-sm"
           >
-            {showJSON ? <EyeOff size={16} /> : <Eye size={16} />}
+            {showJSON ? <Eye size={16} /> : <EyeOff size={16} />}
             <span>{showJSON ? 'Table' : 'JSON'}</span>
           </button>
           <button
@@ -165,27 +164,31 @@ export default function ResultsDisplay({ results, isLoading, error }) {
                       key={idx}
                       className="px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap"
                     >
-                      {col}
-                      <span className="text-xs text-gray-500 font-normal ml-2">
-                        ({typeof displayedRows[0]?.[col] === 'number' 
-                          ? 'number' 
-                          : typeof displayedRows[0]?.[col] === 'boolean' 
-                          ? 'boolean' 
-                          : 'text'})
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-sm">{col}</span>
+                        <span className="text-xs text-gray-500 font-normal">
+                          ({displayedRows.length > 0 && displayedRows[0]?.[col] !== undefined
+                            ? typeof displayedRows[0][col] === 'number' 
+                              ? 'number' 
+                              : typeof displayedRows[0][col] === 'boolean' 
+                              ? 'boolean' 
+                              : 'text'
+                            : 'text'})
+                        </span>
+                      </div>
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 bg-white">
                 {displayedRows.map((row, rowIdx) => (
-                  <tr key={rowIdx} className="hover:bg-gray-50 transition">
+                  <tr key={rowIdx} className="hover:bg-blue-50 transition">
                     {columns.map((col, colIdx) => (
                       <td
                         key={colIdx}
-                        className="px-4 py-3 text-gray-800 whitespace-nowrap max-w-xs truncate cursor-pointer hover:bg-blue-50"
+                        className="px-4 py-3 whitespace-nowrap max-w-xs truncate cursor-pointer"
                         onClick={() => handleCopyCell(row[col])}
-                        title="Click to copy"
+                        title={`Click to copy: ${row[col]}`}
                       >
                         {formatCellValue(row[col])}
                       </td>
@@ -206,7 +209,7 @@ export default function ResultsDisplay({ results, isLoading, error }) {
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   <ChevronLeft size={16} />
                 </button>
@@ -216,7 +219,7 @@ export default function ResultsDisplay({ results, isLoading, error }) {
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   <ChevronRight size={16} />
                 </button>
