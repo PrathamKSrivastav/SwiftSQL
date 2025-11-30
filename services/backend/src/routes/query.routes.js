@@ -11,9 +11,9 @@ const router = express.Router();
 router.use(protect);
 
 /**
- * @route   POST /api/v1/query/convert
- * @desc    Convert natural language to SQL
- * @access  Private
+ * @route POST /api/v1/query/convert
+ * @desc Convert natural language to SQL
+ * @access Private
  */
 router.post(
   '/convert',
@@ -31,9 +31,9 @@ router.post(
 );
 
 /**
- * @route   POST /api/v1/query/execute
- * @desc    Execute SQL query
- * @access  Private
+ * @route POST /api/v1/query/execute
+ * @desc Execute SQL query using saved connection
+ * @access Private
  */
 router.post(
   '/execute',
@@ -43,30 +43,9 @@ router.post(
       .trim()
       .notEmpty()
       .withMessage('SQL query is required'),
-    
-    body('database')
-      .isObject()
-      .withMessage('Database connection details are required'),
-    
-    body('database.host')
-      .trim()
+    body('connectionId')
       .notEmpty()
-      .withMessage('Database host is required'),
-    
-    body('database.username')
-      .trim()
-      .notEmpty()
-      .withMessage('Database username is required'),
-    
-    body('database.password')
-      .notEmpty()
-      .withMessage('Database password is required'),
-    
-    body('database.database')
-      .trim()
-      .notEmpty()
-      .withMessage('Database name is required'),
-    
+      .withMessage('Connection ID is required'),
     body('naturalLanguage')
       .optional()
       .trim(),
@@ -76,34 +55,16 @@ router.post(
 );
 
 /**
- * @route   POST /api/v1/query/test-connection
- * @desc    Test MySQL connection
- * @access  Private
- */
-router.post(
-  '/test-connection',
-  [
-    body('host').trim().notEmpty().withMessage('Host is required'),
-    body('username').trim().notEmpty().withMessage('Username is required'),
-    body('password').notEmpty().withMessage('Password is required'),
-    body('database').trim().notEmpty().withMessage('Database name is required'),
-    body('port').optional().isInt({ min: 1, max: 65535 }),
-  ],
-  validate,
-  queryController.testConnection
-);
-
-/**
- * @route   GET /api/v1/query/history
- * @desc    Get query history
- * @access  Private
+ * @route GET /api/v1/query/history
+ * @desc Get query history
+ * @access Private
  */
 router.get('/history', queryController.getQueryHistory);
 
 /**
- * @route   DELETE /api/v1/query/history/:id
- * @desc    Delete query from history
- * @access  Private
+ * @route DELETE /api/v1/query/history/:id
+ * @desc Delete query from history
+ * @access Private
  */
 router.delete('/history/:id', queryController.deleteQueryHistory);
 

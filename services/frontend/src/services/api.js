@@ -41,9 +41,9 @@ export const authAPI = {
 // Query APIs
 export const queryAPI = {
   executeQuery: (data) => apiClient.post('/query/execute', data),
+  convertToSQL: (data) => apiClient.post('/query/convert', data),
   getHistory: () => apiClient.get('/query/history'),
-  saveQuery: (data) => apiClient.post('/query/save', data),
-  deleteQuery: (id) => apiClient.delete(`/query/${id}`),
+  deleteQuery: (id) => apiClient.delete(`/query/history/${id}`),
 };
 
 // Database APIs
@@ -51,6 +51,7 @@ export const databaseAPI = {
   getConnections: () => apiClient.get('/database/connections'),
   createConnection: (data) => apiClient.post('/database/connections', data),
   testConnection: (data) => apiClient.post('/database/test', data),
+  deleteConnection: (connectionId) => apiClient.delete(`/database/connections/${connectionId}`),
   getTables: (connectionId) => apiClient.get(`/database/connections/${connectionId}/tables`),
 };
 

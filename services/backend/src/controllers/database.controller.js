@@ -199,6 +199,34 @@ export const listTables = catchAsync(async (req, res) => {
 });
 
 /**
+ * Test database connection without saving
+ */
+export const testConnection = catchAsync(async (req, res) => {
+  const { host, port, username, password, database } = req.body;
+
+  try {
+    await mysqlService.testConnection(
+      host,
+      port || 3306,
+      username,
+      password,
+      database
+    );
+    
+    logger.info(`Connection test successful for ${database} at ${host} by user: ${req.user.email}`);
+    
+    res.status(200).json({
+      status: 'success',
+      message: 'Connection successful!',
+    });
+  } catch (error) {
+    logger.error(`Connection test failed: ${error.message}`);
+    throw new ApiError(400, `Connection failed: ${error.message}`);
+  }
+});
+
+
+/**
  * Get table schema
  */
 export const getTableSchema = catchAsync(async (req, res) => {

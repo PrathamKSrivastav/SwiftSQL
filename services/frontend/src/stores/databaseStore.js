@@ -18,8 +18,10 @@ export const useDatabaseStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await databaseAPI.getConnections();
-      set({ connections: response.data, isLoading: false });
-      return response.data;
+      // Backend returns: { status: 'success', data: { connections: [...] } }
+      const connectionsList = response.data.data?.connections || response.data.connections || [];
+      set({ connections: connectionsList, isLoading: false });
+      return connectionsList;
     } catch (error) {
       set({ error: 'Failed to fetch connections', isLoading: false });
       throw error;
@@ -30,17 +32,39 @@ export const useDatabaseStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await databaseAPI.createConnection(connectionData);
+      // Backend returns: { status: 'success', data: { connection: {...} } }
+      const newConnection = response.data.data?.connection || response.data.connection || response.data;
+      
       const { connections } = get();
       set({
-        connections: [...connections, response.data],
+        connections: [...connections, newConnection],
         isLoading: false,
       });
-      return response.data;
+      return newConnection;
     } catch (error) {
-      set({ error: 'Failed to create connection', isLoading: false });
+      const errorMsg = error.response?.data?.message || 'Failed to create connection';
+      set({ error: errorMsg, isLoading: false });
       throw error;
     }
   },
+
+  deleteConnection: async (connectionId) => {
+  set({ isLoading: true, error: null });
+  try {
+    await databaseAPI.deleteConnection(connectionId);
+    const { connections } = get();
+    // Remove the deleted connection from state
+    set({
+      connections: connections.filter((conn) => conn._id !== connectionId && conn.id !== connectionId),
+      isLoading: false,
+    });
+  } catch (error) {
+    const errorMsg = error.response?.data?.message || 'Failed to delete connection';
+    set({ error: errorMsg, isLoading: false });
+    throw error;
+  }
+},
+
 
   testConnection: async (connectionData) => {
     try {
@@ -55,8 +79,9 @@ export const useDatabaseStore = create((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await databaseAPI.getTables(connectionId);
-      set({ tables: response.data, isLoading: false });
-      return response.data;
+      const tablesList = response.data.data?.tables || response.data.tables || [];
+      set({ tables: tablesList, isLoading: false });
+      return tablesList;
     } catch (error) {
       set({ error: 'Failed to fetch tables', isLoading: false });
       throw error;

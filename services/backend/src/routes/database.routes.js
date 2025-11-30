@@ -10,6 +10,25 @@ const router = express.Router();
 router.use(protect);
 
 /**
+ * @route POST /api/v1/database/test
+ * @desc Test database connection without saving
+ * @access Private
+ */
+router.post(
+  '/test',
+  [
+    body('host').trim().notEmpty().withMessage('Host is required'),
+    body('port').optional().isInt({ min: 1, max: 65535 }),
+    body('username').trim().notEmpty().withMessage('Username is required'),
+    body('password').notEmpty().withMessage('Password is required'),
+    body('database').trim().notEmpty().withMessage('Database name is required'),
+  ],
+  validate,
+  databaseController.testConnection
+);
+
+
+/**
  * @route   POST /api/v1/database/connections
  * @desc    Save new database connection
  * @access  Private

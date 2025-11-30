@@ -3,7 +3,7 @@ import { Play, Save, Copy, Trash2 } from 'lucide-react';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
-export default function QueryEditor({ query, setQuery, onExecute, isLoading, onSave }) {
+export default function QueryEditor({ query, setQuery, onExecute, isLoading, onSave, disabled }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -42,8 +42,9 @@ export default function QueryEditor({ query, setQuery, onExecute, isLoading, onS
           </button>
           <button
             onClick={onExecute}
-            disabled={isLoading || !query.trim()}
+            disabled={isLoading || !query.trim() || disabled}
             className="flex items-center space-x-1 px-4 py-2 bg-primary text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm"
+            title={disabled ? 'Select a database connection first' : ''}
           >
             <Play size={16} />
             <span>{isLoading ? 'Executing...' : 'Execute'}</span>

@@ -5,7 +5,7 @@ import { useDatabaseStore } from '../stores/databaseStore';
 export default function ConnectionForm({ onConnected }) {
   const [formData, setFormData] = useState({
     name: '',
-    type: 'mysql',
+    //type: 'mysql',
     host: '',
     port: '3306',
     database: '',
@@ -33,29 +33,59 @@ export default function ConnectionForm({ onConnected }) {
     setTesting(false);
   };
 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   if (!testResult?.success) {
+  //     alert('Please test connection first');
+  //     return;
+  //   }
+  //   try {
+  //     await createConnection(formData);
+  //     setFormData({
+  //       name: '',
+  //       type: 'mysql',
+  //       host: '',
+  //       port: '3306',
+  //       database: '',
+  //       username: '',
+  //       password: '',
+  //     });
+  //     setTestResult(null);
+  //     onConnected?.();
+  //   } catch (error) {
+  //     console.error('Error creating connection:', error);
+  //   }
+  // };
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!testResult?.success) {
-      alert('Please test connection first');
-      return;
-    }
-    try {
-      await createConnection(formData);
-      setFormData({
-        name: '',
-        type: 'mysql',
-        host: '',
-        port: '3306',
-        database: '',
-        username: '',
-        password: '',
-      });
-      setTestResult(null);
-      onConnected?.();
-    } catch (error) {
-      console.error('Error creating connection:', error);
-    }
-  };
+  e.preventDefault();
+
+  if (!testResult?.success) {
+    alert('Please test connection first');
+    return;
+  }
+
+  try {
+    await createConnection(formData);
+    // Success! Reset form
+    setFormData({
+      name: '',
+      type: 'mysql',
+      host: '',
+      port: '3306',
+      database: '',
+      username: '',
+      password: '',
+    });
+    setTestResult(null);
+    onConnected?.();
+  } catch (error) {
+    // Show actual error to user
+    const errorMsg = error.response?.data?.message || error.message || 'Failed to create connection';
+    alert(`Error: ${errorMsg}`);
+    console.error('Error creating connection:', error);
+  }
+};
+
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">

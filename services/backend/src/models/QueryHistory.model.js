@@ -10,24 +10,35 @@ const queryHistorySchema = new mongoose.Schema(
     },
     naturalLanguageQuery: {
       type: String,
-      required: true,
+      default: '',  // 👈 CHANGE: Make it optional with default empty string
     },
     generatedSQL: {
       type: String,
       required: true,
     },
-    executionResult: {
-      success: Boolean,
-      rowCount: Number,
-      error: String,
-      data: mongoose.Schema.Types.Mixed,
-    },
     database: {
       type: String,
       required: true,
     },
+    executionResult: {
+      success: {
+        type: Boolean,
+        required: true,
+      },
+      rowCount: {
+        type: Number,
+        default: 0,
+      },
+      data: {
+        type: mongoose.Schema.Types.Mixed,
+      },
+      error: {
+        type: String,
+      },
+    },
     executionTime: {
       type: Number,
+      default: 0,
     },
   },
   {
@@ -35,6 +46,7 @@ const queryHistorySchema = new mongoose.Schema(
   }
 );
 
+// Index for faster queries
 queryHistorySchema.index({ userId: 1, createdAt: -1 });
 
 const QueryHistory = mongoose.model('QueryHistory', queryHistorySchema);

@@ -1,4 +1,5 @@
 import QueryHistory from '../models/QueryHistory.model.js';
+import DatabaseConnection from '../models/DatabaseConnection.model.js';
 import mlServiceClient from '../services/mlService.client.js';
 import mysqlService from '../services/mysql.service.js';
 import catchAsync from '../utils/catchAsync.js';
@@ -35,10 +36,10 @@ export const convertToSQL = catchAsync(async (req, res) => {
 });
 
 /**
- * Execute SQL query on user's MySQL database
+ * Execute SQL query using saved connection
  */
 export const executeSQL = catchAsync(async (req, res) => {
-  const { query: sqlQuery, database, naturalLanguage } = req.body;
+  const { query: sqlQuery, connectionId, naturalLanguage } = req.body;
   const userId = req.user._id;
 
   // Validation
@@ -46,65 +47,78 @@ export const executeSQL = catchAsync(async (req, res) => {
     throw new ApiError(400, 'SQL query is required');
   }
 
-  if (!database) {
-    throw new ApiError(400, 'Database connection details are required');
+  if (!connectionId) {
+    throw new ApiError(400, 'Connection ID is required');
   }
+
+  // Fetch the saved connection
+  const connection = await DatabaseConnection.findOne({ _id: connectionId, userId });
+  
+  if (!connection) {
+    throw new ApiError(404, 'Database connection not found');
+  }
+
+  // Decrypt password
+  const decryptedPassword = connection.decryptPassword();
 
   logger.info(`Executing SQL for user ${req.user.email}: ${sqlQuery.substring(0, 50)}...`);
 
   try {
     const startTime = Date.now();
 
-    // Execute query on MySQL
+    // Execute query on MySQL using saved connection
     const result = await mysqlService.executeQuery(
-      database.host,
-      database.port,
-      database.username,
-      database.password,
-      database.database,
+      connection.host,
+      connection.port,
+      connection.username,
+      decryptedPassword,
+      connection.database,
       sqlQuery
     );
 
     const executionTime = Date.now() - startTime;
 
-    // Save to query history
-    await QueryHistory.create({
+    // Save to query history (async, don't block response)
+    QueryHistory.create({
       userId,
       naturalLanguageQuery: naturalLanguage || '',
       generatedSQL: sqlQuery,
-      database: database.database,
+      database: connection.database,
       executionResult: {
         success: true,
         rowCount: result.rowCount,
-        data: result.results,
       },
       executionTime,
-    });
+    }).catch((err) => logger.error(`Failed to save query history: ${err.message}`));
 
     logger.info(`Query executed successfully in ${executionTime}ms`);
 
+    // Standardized response format
     res.status(200).json({
       status: 'success',
       data: {
-        results: result.results,
-        rowCount: result.rowCount,
-        executionTime,
+        results: Array.isArray(result.results) ? result.results : [],
+        rowCount: result.rowCount || 0,
+        executionTime: executionTime || 0,
+        columns: result.results && result.results.length > 0 
+          ? Object.keys(result.results[0]) 
+          : [],
       },
     });
   } catch (error) {
     logger.error(`Query execution failed: ${error.message}`);
 
-    // Save failed query to history
-    await QueryHistory.create({
+    // Save failed query to history (async)
+    QueryHistory.create({
       userId,
       naturalLanguageQuery: naturalLanguage || '',
       generatedSQL: sqlQuery,
-      database: database.database || 'unknown',
+      database: connection.database,
       executionResult: {
         success: false,
         error: error.message,
       },
-    });
+    }).catch((err) => logger.error(`Failed to save failed query: ${err.message}`));
 
     throw new ApiError(400, `Query execution failed: ${error.message}`);
   }
@@ -166,36 +180,4 @@ export const deleteQueryHistory = catchAsync(async (req, res) => {
     status: 'success',
     message: 'Query deleted successfully',
   });
-});
-
-/**
- * Test MySQL connection
- */
-export const testConnection = catchAsync(async (req, res) => {
-  const { host, port, username, password, database } = req.body;
-
-  if (!host || !username || !password || !database) {
-    throw new ApiError(400, 'All connection details are required');
-  }
-
-  logger.info(`Testing MySQL connection for user: ${req.user.email}`);
-
-  try {
-    const result = await mysqlService.testConnection(
-      host,
-      port || 3306,
-      username,
-      password,
-      database
-    );
-
-    res.status(200).json({
-      status: 'success',
-      message: 'Connection successful',
-      data: result,
-    });
-  } catch (error) {
-    logger.error(`Connection test failed: ${error.message}`);
-    throw new ApiError(400, `Connection failed: ${error.message}`);
-  }
 });
