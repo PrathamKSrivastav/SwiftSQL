@@ -3,10 +3,10 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import connectDB from './config/database.js';
-import routes from './routes/index.js';
-import errorHandler from './middleware/errorHandler.js';
-import logger from './config/logger.js';
+import connectDB from './src/config/database.js';
+import routes from './src/routes/index.js';
+import errorHandler from './src/middleware/errorHandler.js';
+import logger from './src/config/logger.js';
 
 // Load environment variables
 dotenv.config();
