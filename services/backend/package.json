@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "SwiftSQL Backend API",
   "type": "module",
-  "main": "src/server.js",
+  "main": "server.js",
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
+    "dev": "nodemon server.js",
+    "start": "node server.js",
     "build": "echo 'No build step required'",
     "test": "echo 'Tests coming soon'"
   },
