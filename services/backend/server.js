@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import connectDB from './src/config/database.js';
 import routes from './src/routes/index.js';
-import errorHandler from './src/middleware/errorHandler.js';
+import errorHandler from './src/middleware/error.middleware.js';
 import logger from './src/config/logger.js';
 
 // Load environment variables
