@@ -5,7 +5,6 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import connectDB from './src/config/database.js';
 import routes from './src/routes/index.js';
-import errorHandler from './src/middleware/error.middleware.js';
 import logger from './src/config/logger.js';
 
 // Load environment variables
@@ -21,7 +20,7 @@ app.set('trust proxy', 1);
 app.use(helmet());
 
 // CORS configuration - Support multiple origins
-const allowedOrigins = process.env.CORS_ORIGIN 
+const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',')
   : ['http://localhost:5173'];
 
@@ -69,7 +68,6 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV,
-    database: 'connected', // You can add actual DB check here
   });
 });
 
@@ -84,8 +82,23 @@ app.use('*', (req, res) => {
   });
 });
 
-// Error handling middleware (must be last)
-app.use(errorHandler);
+// Global error handler (inline to avoid import issues)
+app.use((err, req, res, next) => {
+  logger.error('Error:', {
+    message: err.message,
+    stack: err.stack,
+    url: req.originalUrl,
+    method: req.method,
+  });
+
+  const statusCode = err.statusCode || 500;
+  
+  res.status(statusCode).json({
+    status: 'error',
+    message: err.message || 'Internal Server Error',
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+  });
+});
 
 // Connect to MongoDB and start server
 const startServer = async () => {
@@ -117,8 +130,3 @@ process.on('SIGINT', () => {
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  logger.error('Unhandled Rejection:', err);
-  process.exit(1);
-});
-
-export default app;
